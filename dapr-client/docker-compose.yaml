@@ -1,0 +1,40 @@
+version: "3.9"
+
+services:
+  fastapi:
+    container_name: fastapi
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    ports:
+      - 8000:8000
+
+  dapr_sidecar:
+    image: daprio/daprd:latest
+    container_name: dapr
+    command:
+      [
+        "./daprd",
+        "-app-id",
+        "fastapi",
+        "-app-port",
+        "8000",
+        "-dapr-http-port",
+        "3500",
+        "-dapr-grpc-port",
+        "50001",
+        "-components-path",
+        "/components",
+      ]
+    volumes:
+      - "./components:/components"
+    network_mode: service:fastapi
+    depends_on:
+      fastapi:
+        condition: service_healthy
+    restart: on-failure
